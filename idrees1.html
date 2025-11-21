@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Billing Analytics Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --info: #17a2b8;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 1.5rem;
+            height: 100%;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-weight: 600;
+            padding: 1rem 1.25rem;
+        }
+        
+        .kpi-card {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+        
+        .kpi-title {
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .kpi-positive {
+            color: var(--success);
+        }
+        
+        .kpi-negative {
+            color: var(--danger);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            padding: 1rem;
+        }
+        
+        .diagram-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            height: 100%;
+        }
+        
+        .nav-tabs .nav-link {
+            color: var(--dark);
+            font-weight: 500;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--secondary);
+            font-weight: 600;
+            border-bottom: 3px solid var(--secondary);
+        }
+        
+        .progress {
+            height: 10px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-importance-bar {
+            margin-bottom: 1rem;
+        }
+        
+        .feature-name {
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .footer {
+            background-color: var(--primary);
+            color: white;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+        }
+        
+        .system-component {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .component-header {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .architecture-node {
+            fill: #3498db;
+            stroke: #2980b9;
+            stroke-width: 2px;
+            rx: 5;
+        }
+        
+        .architecture-text {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px;
+            fill: white;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+        
+        .architecture-connector {
+            stroke: #7f8c8d;
+            stroke-width: 2px;
+            fill: none;
+        }
+        
+        .architecture-arrow {
+            fill: #7f8c8d;
+        }
+        
+        .flowchart-step {
+            fill: #e74c3c;
+            stroke: #c0392b;
+            stroke-width: 2px;
+            rx: 5;
+        }
+        
+        .flowchart-text {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11px;
+            fill: white;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+        
+        .flowchart-connector {
+            stroke: #7f8c8d;
+            stroke-width: 2px;
+            fill: none;
+        }
+        
+        .pipeline-step {
+            fill: #2ecc71;
+            stroke: #27ae60;
+            stroke-width: 2px;
+            rx: 5;
+        }
+        
+        .pipeline-text {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 11px;
+            fill: white;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+        
+        .pipeline-connector {
+            stroke: #7f8c8d;
+            stroke-width: 2px;
+            fill: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="h2 mb-1">Healthcare Billing Analytics Dashboard</h1>
+                    <p class="mb-0">Predictive Analytics for Claim Denial Prevention & Revenue Optimization</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge bg-light text-dark fs-6">Last Updated: Nov 21, 2025</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- KPI Summary -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card kpi-card">
+                    <div class="kpi-title">Initial Denial Rate</div>
+                    <div class="kpi-value kpi-negative">12.4%</div>
+                    <div class="kpi-change kpi-positive">↓ 3.2% from last month</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card kpi-card">
+                    <div class="kpi-title">Prediction Accuracy</div>
+                    <div class="kpi-value kpi-positive">92.3%</div>
+                    <div class="kpi-change kpi-positive">↑ 1.7% from baseline</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card kpi-card">
+                    <div class="kpi-title">Monthly Savings</div>
+                    <div class="kpi-value kpi-positive">$284K</div>
+                    <div class="kpi-change kpi-positive">↑ $42K from last month</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card kpi-card">
+                    <div class="kpi-title">Days in A/R</div>
+                    <div class="kpi-value">38.2</div>
+                    <div class="kpi-change kpi-positive">↓ 5.6 days from last quarter</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Architecture Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        System Architecture Diagram
+                    </div>
+                    <div class="card-body">
+                        <div class="diagram-container">
+                            <svg width="100%" height="400" viewBox="0 0 800 400">
+                                <!-- Data Sources -->
+                                <rect x="50" y="50" width="120" height="60" class="architecture-node" />
+                                <text x="110" y="80" class="architecture-text">EHR Systems</text>
+                                
+                                <rect x="50" y="130" width="120" height="60" class="architecture-node" />
+                                <text x="110" y="160" class="architecture-text">Practice Management</text>
+                                
+                                <rect x="50" y="210" width="120" height="60" class="architecture-node" />
+                                <text x="110" y="240" class="architecture-text">Payer Portals</text>
+                                
+                                <rect x="50" y="290" width="120" height="60" class="architecture-node" />
+                                <text x="110" y="320" class="architecture-text">Patient Portals</text>
+                                
+                                <!-- Data Ingestion -->
+                                <rect x="220" y="100" width="140" height="200" class="architecture-node" />
+                                <text x="290" y="140" class="architecture-text">Data Ingestion</text>
+                                <text x="290" y="160" class="architecture-text">Layer</text>
+                                <text x="290" y="200" class="architecture-text" style="font-size:10px">Azure Data Factory</text>
+                                <text x="290" y="220" class="architecture-text" style="font-size:10px">Kafka Streams</text>
+                                <text x="290" y="240" class="architecture-text" style="font-size:10px">API Connectors</text>
+                                
+                                <!-- Storage Layer -->
+                                <rect x="420" y="50" width="140" height="300" class="architecture-node" />
+                                <text x="490" y="90" class="architecture-text">Storage Layer</text>
+                                <text x="490" y="140" class="architecture-text" style="font-size:10px">Bronze - Raw Data</text>
+                                <text x="490" y="180" class="architecture-text" style="font-size:10px">Silver - Cleaned Data</text>
+                                <text x="490" y="220" class="architecture-text" style="font-size:10px">Gold - Modeled Data</text>
+                                <text x="490" y="260" class="architecture-text" style="font-size:10px">Feature Store</text>
+                                
+                                <!-- Processing & ML -->
+                                <rect x="620" y="100" width="140" height="200" class="architecture-node" />
+                                <text x="690" y="140" class="architecture-text">Processing &</text>
+                                <text x="690" y="160" class="architecture-text">ML Layer</text>
+                                <text x="690" y="200" class="architecture-text" style="font-size:10px">Azure Databricks</text>
+                                <text x="690" y="230" class="architecture-text" style="font-size:10px">XGBoost Models</text>
+                                <text x="690" y="260" class="architecture-text" style="font-size:10px">Real-time Scoring</text>
+                                
+                                <!-- Arrows -->
+                                <path d="M 170 80 L 220 150" class="architecture-connector" marker-end="url(#arrowhead)" />
+                                <path d="M 170 160 L 220 150" class="architecture-connector" marker-end="url(#arrowhead)" />
+                                <path d="M 170 240 L 220 250" class="architecture-connector" marker-end="url(#arrowhead)" />
+                                <path d="M 170 320 L 220 250" class="architecture-connector" marker-end="url(#arrowhead)" />
+                                
+                                <path d="M 360 200 L 420 200" class="architecture-connector" marker-end="url(#arrowhead)" />
+                                <path d="M 560 200 L 620 200" class="architecture-connector" marker-end="url(#arrowhead)" />
+                                
+                                <!-- Arrowhead definition -->
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                                            refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" class="architecture-arrow" />
+                                    </marker>
+                                </defs>
+                            </svg>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="system-component">
+                                    <div class="component-header">Data Sources</div>
+                                    <p>Collects healthcare data from EHR systems, practice management software, payer portals, and patient portals.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="system-component">
+                                    <div class="component-header">Data Processing</div>
+                                    <p>Ingests and processes data using Azure Data Factory, Kafka for streaming, and API connectors.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="system-component">
+                                    <div class="component-header">Storage & Analytics</div>
+                                    <p>Implements medallion architecture and runs ML models for predictive analytics on claims data.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Flow and Pipeline Diagrams -->
+        <div class="row mb-4">
+            <!-- Data Flow Diagram -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Data Flow Diagram (DFD)
+                    </div>
+                    <div class="card-body">
+                        <div class="diagram-container">
+                            <svg width="100%" height="300" viewBox="0 0 600 300">
+                                <!-- External Entities -->
+                                <rect x="30" y="120" width="100" height="40" class="flowchart-step" />
+                                <text x="80" y="145" class="flowchart-text">Healthcare</text>
+                                <text x="80" y="155" class="flowchart-text">Providers</text>
+                                
+                                <rect x="470" y="120" width="100" height="40" class="flowchart-step" />
+                                <text x="520" y="145" class="flowchart-text">Payers &</text>
+                                <text x="520" y="155" class="flowchart-text">Patients</text>
+                                
+                                <!-- Processes -->
+                                <rect x="150" y="50" width="100" height="40" class="flowchart-step" />
+                                <text x="200" y="75" class="flowchart-text">Data</text>
+                                <text x="200" y="85" class="flowchart-text">Collection</text>
+                                
+                                <rect x="150" y="120" width="100" height="40" class="flowchart-step" />
+                                <text x="200" y="145" class="flowchart-text">Data</text>
+                                <text x="200" y="155" class="flowchart-text">Processing</text>
+                                
+                                <rect x="150" y="190" width="100" height="40" class="flowchart-step" />
+                                <text x="200" y="215" class="flowchart-text">Analytics &</text>
+                                <text x="200" y="225" class="flowchart-text">ML</text>
+                                
+                                <rect x="320" y="120" width="100" height="40" class="flowchart-step" />
+                                <text x="370" y="145" class="flowchart-text">Results</text>
+                                <text x="370" y="155" class="flowchart-text">Delivery</text>
+                                
+                                <!-- Data Stores -->
+                                <rect x="300" y="230" width="140" height="40" class="pipeline-step" />
+                                <text x="370" y="255" class="pipeline-text">Data Warehouse</text>
+                                
+                                <!-- Flows -->
+                                <path d="M 130 140 L 150 140" class="flowchart-connector" marker-end="url(#arrowhead2)" />
+                                <path d="M 250 140 L 320 140" class="flowchart-connector" marker-end="url(#arrowhead2)" />
+                                <path d="M 420 140 L 470 140" class="flowchart-connector" marker-end="url(#arrowhead2)" />
+                                
+                                <path d="M 200 90 L 200 120" class="flowchart-connector" marker-end="url(#arrowhead2)" />
+                                <path d="M 200 160 L 200 190" class="flowchart-connector" marker-end="url(#arrowhead2)" />
+                                
+                                <path d="M 270 210 L 300 250" class="flowchart-connector" marker-end="url(#arrowhead2)" />
+                                <path d="M 440 250 L 370 210" class="flowchart-connector" marker-end="url(#arrowhead2)" />
+                                
+                                <!-- Arrowhead definition -->
+                                <defs>
+                                    <marker id="arrowhead2" markerWidth="10" markerHeight="7" 
+                                            refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" class="flowchart-connector" />
+                                    </marker>
+                                </defs>
+                            </svg>
+                        </div>
+                        <p class="mt-3">The Data Flow Diagram illustrates how data moves between external entities, processes, and data stores in the healthcare billing analytics system.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pipeline Diagram -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        ML Pipeline Diagram
+                    </div>
+                    <div class="card-body">
+                        <div class="diagram-container">
+                            <svg width="100%" height="300" viewBox="0 0 600 300">
+                                <!-- Pipeline Steps -->
+                                <rect x="50" y="50" width="100" height="40" class="pipeline-step" />
+                                <text x="100" y="75" class="pipeline-text">Data</text>
+                                <text x="100" y="85" class="pipeline-text">Collection</text>
+                                
+                                <rect x="180" y="50" width="100" height="40" class="pipeline-step" />
+                                <text x="230" y="75" class="pipeline-text">Data</text>
+                                <text x="230" y="85" class="pipeline-text">Cleaning</text>
+                                
+                                <rect x="310" y="50" width="100" height="40" class="pipeline-step" />
+                                <text x="360" y="75" class="pipeline-text">Feature</text>
+                                <text x="360" y="85" class="pipeline-text">Engineering</text>
+                                
+                                <rect x="440" y="50" width="100" height="40" class="pipeline-step" />
+                                <text x="490" y="75" class="pipeline-text">Model</text>
+                                <text x="490" y="85" class="pipeline-text">Training</text>
+                                
+                                <!-- Evaluation Branch -->
+                                <rect x="310" y="120" width="100" height="40" class="pipeline-step" />
+                                <text x="360" y="145" class="pipeline-text">Model</text>
+                                <text x="360" y="155" class="pipeline-text">Evaluation</text>
+                                
+                                <rect x="180" y="120" width="100" height="40" class="pipeline-step" />
+                                <text x="230" y="145" class="pipeline-text">Hyperparameter</text>
+                                <text x="230" y="155" class="pipeline-text">Tuning</text>
+                                
+                                <!-- Deployment -->
+                                <rect x="440" y="120" width="100" height="40" class="pipeline-step" />
+                                <text x="490" y="145" class="pipeline-text">Model</text>
+                                <text x="490" y="155" class="pipeline-text">Deployment</text>
+                                
+                                <!-- Monitoring -->
+                                <rect x="440" y="190" width="100" height="40" class="pipeline-step" />
+                                <text x="490" y="215" class="pipeline-text">Model</text>
+                                <text x="490" y="225" class="pipeline-text">Monitoring</text>
+                                
+                                <!-- Connectors -->
+                                <path d="M 150 70 L 180 70" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                <path d="M 280 70 L 310 70" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                <path d="M 410 70 L 440 70" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                
+                                <path d="M 360 90 L 360 120" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                <path d="M 360 160 L 360 190" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                <path d="M 410 160 L 440 190" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                
+                                <path d="M 360 160 L 280 160 L 280 120" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                <path d="M 230 160 L 180 160 L 180 90" class="pipeline-connector" marker-end="url(#arrowhead3)" />
+                                
+                                <!-- Arrowhead definition -->
+                                <defs>
+                                    <marker id="arrowhead3" markerWidth="10" markerHeight="7" 
+                                            refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" class="pipeline-connector" />
+                                    </marker>
+                                </defs>
+                            </svg>
+                        </div>
+                        <p class="mt-3">The Machine Learning Pipeline Diagram shows the sequential steps and feedback loops in the model development and deployment process.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistical Charts Section -->
+        <div class="row mb-4">
+            <!-- Denial Trends -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Claim Denial Trends & Predictions</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary active">Monthly</button>
+                            <button type="button" class="btn btn-outline-secondary">Quarterly</button>
+                            <button type="button" class="btn btn-outline-secondary">Yearly</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="denialTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Denial Reasons -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Top Denial Reasons</div>
+                    <div class="chart-container">
+                        <canvas id="denialReasonsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+            <!-- Model Performance -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Model Performance Metrics</div>
+                    <div class="chart-container">
+                        <canvas id="modelPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Payer Analysis -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Denial Rates by Payer</div>
+                    <div class="chart-container">
+                        <canvas id="payerAnalysisChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Importance & Heatmap -->
+        <div class="row mb-4">
+            <!-- Feature Importance -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">Feature Importance in Denial Prediction</div>
+                    <div class="card-body">
+                        <div class="feature-importance-bar">
+                            <div class="d-flex justify-content-between feature-name">
+                                <span>Submission Lag (Days)</span>
+                                <span>24.3%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: 24.3%"></div>
+                            </div>
+                        </div>
+                        <div class="feature-importance-bar">
+                            <div class="d-flex justify-content-between feature-name">
+                                <span>Provider Denial Rate (30-day)</span>
+                                <span>18.7%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: 18.7%"></div>
+                            </div>
+                        </div>
+                        <div class="feature-importance-bar">
+                            <div class="d-flex justify-content-between feature-name">
+                                <span>Procedure-Diagnosis Mismatch</span>
+                                <span>15.2%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: 15.2%"></div>
+                            </div>
+                        </div>
+                        <div class="feature-importance-bar">
+                            <div class="d-flex justify-content-between feature-name">
+                                <span>Payer-Specific Denial Pattern</span>
+                                <span>12.8%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: 12.8%"></div>
+                            </div>
+                        </div>
+                        <div class="feature-importance-bar">
+                            <div class="d-flex justify-content-between feature-name">
+                                <span>Code Complexity Score</span>
+                                <span>9.5%</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: 9.5%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Correlation Heatmap -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Feature Correlation Heatmap</div>
+                    <div class="chart-container">
+                        <canvas id="correlationHeatmap"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Impact -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">Financial Impact Analysis</div>
+                    <div class="chart-container">
+                        <canvas id="financialImpactChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Healthcare Billing Analytics</h5>
+                    <p>Predictive analytics platform for optimizing revenue cycle management</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p>Powered by XGBoost & Big Data Technologies</p>
+                    <p class="mb-0">Confidential - Internal Use Only</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize all charts
+        document.addEventListener('DOMContentLoaded', function() {
+            // Denial Trends Chart
+            const denialTrendsCtx = document.getElementById('denialTrendsChart').getContext('2d');
+            const denialTrendsChart = new Chart(denialTrendsCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
+                    datasets: [
+                        {
+                            label: 'Actual Denial Rate',
+                            data: [15.2, 14.8, 13.9, 13.5, 12.9, 12.7, 12.4, 12.1, 11.8, 11.5, 11.2],
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Predicted Denial Rate',
+                            data: [14.9, 14.3, 13.7, 13.2, 12.8, 12.5, 12.3, 12.0, 11.7, 11.4, 11.1],
+                            borderColor: '#3498db',
+                            borderDash: [5, 5],
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Target Denial Rate',
+                            data: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+                            borderColor: '#2ecc71',
+                            borderDash: [2, 2],
+                            tension: 0.3,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Monthly Denial Rate Trends (%)'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Denial Rate (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Denial Reasons Chart
+            const denialReasonsCtx = document.getElementById('denialReasonsChart').getContext('2d');
+            const denialReasonsChart = new Chart(denialReasonsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Authorization', 'Medical Necessity', 'Coding Errors', 'Timely Filing', 'Eligibility', 'Other'],
+                    datasets: [{
+                        data: [32, 25, 18, 12, 8, 5],
+                        backgroundColor: [
+                            '#e74c3c',
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12',
+                            '#9b59b6',
+                            '#34495e'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Denial Reasons Distribution'
+                        }
+                    }
+                }
+            });
+
+            // Model Performance Chart
+            const modelPerformanceCtx = document.getElementById('modelPerformanceChart').getContext('2d');
+            const modelPerformanceChart = new Chart(modelPerformanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'ROC-AUC'],
+                    datasets: [{
+                        label: 'XGBoost Model',
+                        data: [92.3, 88.5, 85.7, 87.1, 94.2],
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9',
+                        borderWidth: 1
+                    }, {
+                        label: 'Random Forest',
+                        data: [90.1, 85.2, 82.3, 83.7, 91.5],
+                        backgroundColor: '#2ecc71',
+                        borderColor: '#27ae60',
+                        borderWidth: 1
+                    }, {
+                        label: 'Logistic Regression',
+                        data: [84.5, 79.8, 75.6, 77.6, 86.3],
+                        backgroundColor: '#e74c3c',
+                        borderColor: '#c0392b',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Model Performance Comparison (%)'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Performance (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Payer Analysis Chart
+            const payerAnalysisCtx = document.getElementById('payerAnalysisChart').getContext('2d');
+            const payerAnalysisChart = new Chart(payerAnalysisCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Medicare', 'Medicaid', 'Commercial A', 'Commercial B', 'Commercial C', 'Self-Pay'],
+                    datasets: [{
+                        label: 'Denial Rate (%)',
+                        data: [8.2, 12.7, 14.3, 16.8, 11.5, 22.4],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#e74c3c',
+                            '#f39c12',
+                            '#9b59b6',
+                            '#34495e'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Denial Rates by Payer Type'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Denial Rate (%)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Correlation Heatmap
+            const correlationHeatmapCtx = document.getElementById('correlationHeatmap').getContext('2d');
+            const correlationHeatmap = new Chart(correlationHeatmapCtx, {
+                type: 'matrix',
+                data: {
+                    datasets: [{
+                        label: 'Correlation Matrix',
+                        data: [
+                            {x: 'Submission Lag', y: 'Submission Lag', v: 1.0},
+                            {x: 'Submission Lag', y: 'Provider History', v: 0.72},
+                            {x: 'Submission Lag', y: 'Code Mismatch', v: 0.45},
+                            {x: 'Submission Lag', y: 'Payer Pattern', v: 0.38},
+                            {x: 'Submission Lag', y: 'Code Complexity', v: 0.29},
+                            
+                            {x: 'Provider History', y: 'Submission Lag', v: 0.72},
+                            {x: 'Provider History', y: 'Provider History', v: 1.0},
+                            {x: 'Provider History', y: 'Code Mismatch', v: 0.51},
+                            {x: 'Provider History', y: 'Payer Pattern', v: 0.42},
+                            {x: 'Provider History', y: 'Code Complexity', v: 0.33},
+                            
+                            {x: 'Code Mismatch', y: 'Submission Lag', v: 0.45},
+                            {x: 'Code Mismatch', y: 'Provider History', v: 0.51},
+                            {x: 'Code Mismatch', y: 'Code Mismatch', v: 1.0},
+                            {x: 'Code Mismatch', y: 'Payer Pattern', v: 0.28},
+                            {x: 'Code Mismatch', y: 'Code Complexity', v: 0.61},
+                            
+                            {x: 'Payer Pattern', y: 'Submission Lag', v: 0.38},
+                            {x: 'Payer Pattern', y: 'Provider History', v: 0.42},
+                            {x: 'Payer Pattern', y: 'Code Mismatch', v: 0.28},
+                            {x: 'Payer Pattern', y: 'Payer Pattern', v: 1.0},
+                            {x: 'Payer Pattern', y: 'Code Complexity', v: 0.19},
+                            
+                            {x: 'Code Complexity', y: 'Submission Lag', v: 0.29},
+                            {x: 'Code Complexity', y: 'Provider History', v: 0.33},
+                            {x: 'Code Complexity', y: 'Code Mismatch', v: 0.61},
+                            {x: 'Code Complexity', y: 'Payer Pattern', v: 0.19},
+                            {x: 'Code Complexity', y: 'Code Complexity', v: 1.0}
+                        ],
+                        backgroundColor(context) {
+                            const value = context.dataset.data[context.dataIndex].v;
+                            const alpha = Math.abs(value);
+                            return value < 0 ? 
+                                rgba(231, 76, 60, ${alpha}) : 
+                                rgba(46, 204, 113, ${alpha});
+                        },
+                        borderWidth: 1,
+                        borderColor: 'white',
+                        width: ({chart}) => (chart.chartArea || {}).width / 5 - 1,
+                        height: ({chart}) => (chart.chartArea || {}).height / 5 - 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title() {
+                                    return '';
+                                },
+                                label(context) {
+                                    const v = context.dataset.data[context.dataIndex].v;
+                                    return Correlation: ${v.toFixed(2)};
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: ['Submission Lag', 'Provider History', 'Code Mismatch', 'Payer Pattern', 'Code Complexity'],
+                            ticks: {
+                                display: true
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            type: 'category',
+                            labels: ['Submission Lag', 'Provider History', 'Code Mismatch', 'Payer Pattern', 'Code Complexity'],
+                            offset: true,
+                            ticks: {
+                                display: true
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Financial Impact Chart
+            const financialImpactCtx = document.getElementById('financialImpactChart').getContext('2d');
+            const financialImpactChart = new Chart(financialImpactCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024', 'Q1 2025', 'Q2 2025', 'Q3 2025'],
+                    datasets: [
+                        {
+                            label: 'Denial-Related Costs ($K)',
+                            data: [450, 420, 390, 350, 320, 290, 265],
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Savings from Prevention ($K)',
+                            data: [0, 85, 120, 185, 220, 250, 284],
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Cumulative ROI (%)',
+                            data: [0, 19, 31, 53, 69, 86, 107],
+                            borderColor: '#3498db',
+                            borderDash: [5, 5],
+                            tension: 0.3,
+                            fill: false,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Financial Impact of Predictive Analytics Implementation'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Amount ($ Thousands)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'ROI (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
